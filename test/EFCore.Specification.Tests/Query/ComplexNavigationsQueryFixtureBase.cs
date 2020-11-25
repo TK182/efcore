@@ -356,6 +356,16 @@ namespace Microsoft.EntityFrameworkCore.Query
                     return (IQueryable<TEntity>)InheritanceBaseTwos.AsQueryable();
                 }
 
+                if (typeof(TEntity) == typeof(InheritanceLeaf1))
+                {
+                    return (IQueryable<TEntity>)InheritanceLeafOnes.AsQueryable();
+                }
+
+                if (typeof(TEntity) == typeof(InheritanceLeaf2))
+                {
+                    return (IQueryable<TEntity>)InheritanceLeafTwos.AsQueryable();
+                }
+
                 throw new InvalidOperationException("Invalid entity type: " + typeof(TEntity));
             }
         }

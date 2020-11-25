@@ -21,6 +21,8 @@ namespace Microsoft.EntityFrameworkCore.TestModels.GearsOfWarModel
         public IReadOnlyList<LocustLeader> LocustLeaders { get; }
         public IReadOnlyList<LocustHighCommand> LocustHighCommands { get; }
 
+        public IReadOnlyDictionary<(Type, string), Func<object, object>> ShadowPropertyMappings { get; }
+
         public GearsOfWarData()
         {
             Squads = CreateSquads();
@@ -36,6 +38,8 @@ namespace Microsoft.EntityFrameworkCore.TestModels.GearsOfWarModel
 
             WireUp(Squads, Missions, SquadMissions, Cities, Weapons, Tags, Gears, LocustLeaders, Factions, LocustHighCommands);
             WireUp2(LocustLeaders, Factions);
+
+            ShadowPropertyMappings = CreateShadowPropertyMappings(Gears);
         }
 
         public virtual IQueryable<TEntity> Set<TEntity>()
@@ -578,5 +582,15 @@ namespace Microsoft.EntityFrameworkCore.TestModels.GearsOfWarModel
             };
             ((LocustHorde)factions[1]).Leaders = new List<LocustLeader> { locustLeaders[4], locustLeaders[5] };
         }
+    
+        private Dictionary<(Type, string), Func<object, object>> CreateShadowPropertyMappings(
+            IReadOnlyList<Gear> gears)
+            => new Dictionary<(Type, string), Func<object, object>>
+            {
+                {
+                    (typeof(Gear), "AssignedCityName"),
+                    e => gears.SingleOrDefault(g => g.Nickname == ((Gear)e)?.Nickname)?.AssignedCity?.Name
+                },
+            };
     }
 }

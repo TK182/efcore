@@ -2,6 +2,7 @@
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore.Diagnostics;
@@ -17,6 +18,76 @@ namespace Microsoft.EntityFrameworkCore.Query
         protected GearsOfWarQueryRelationalTestBase(TFixture fixture)
             : base(fixture)
         {
+        }
+
+        protected override Dictionary<(Type, string), Func<object, object>> GetShadowPropertyMapping()
+        {
+            var discriminatorMapping = new Dictionary<(Type, string), Func<object, object>>
+            {
+                {
+                    (typeof(Gear), "Discriminator"),
+                    e =>
+                    {
+                        switch (((Gear)e)?.Nickname)
+                        {
+                            case "Baird":
+                            case "Marcus":
+                                return "Officer";
+
+                            case "Cole Train":
+                            case "Dom":
+                            case "Paduk":
+                                return "Gear";
+
+                            default:
+                                return null;
+                        }
+                    }
+                },
+                {
+                    (typeof(Faction), "Discriminator"),
+                    e =>
+                    {
+                        switch (((Faction)e)?.Id)
+                        {
+                            case 1:
+                            case 2:
+                                return "LocustHorde";
+
+                            default:
+                                return null;
+                        }
+                    }
+                },
+                {
+                    (typeof(LocustLeader), "Discriminator"),
+                    e =>
+                    {
+                        switch (((LocustLeader)e)?.Name)
+                        {
+                            case "General Karn":
+                            case "General RAAM":
+                            case "High Priest Skorge":
+                            case "The Speaker":
+                                return "LocustLeader";
+
+                            case "Queen Myrrah":
+                            case "Unknown":
+                                return "LocustCommander";
+
+                            default:
+                                return null;
+                        }
+                    }
+                },
+            };
+
+            foreach (var shadowPropertyMappingElement in base.GetShadowPropertyMapping())
+            {
+                discriminatorMapping.Add(shadowPropertyMappingElement.Key, shadowPropertyMappingElement.Value);
+            }
+
+            return discriminatorMapping;
         }
 
         [ConditionalTheory]
@@ -103,6 +174,41 @@ namespace Microsoft.EntityFrameworkCore.Query
         public override Task Where_coalesce_with_anonymous_types(bool async)
         {
             return AssertTranslationFailed(() => base.Where_coalesce_with_anonymous_types(async));
+        }
+
+        [ConditionalTheory]
+        [MemberData(nameof(IsAsyncData))]
+        public virtual async Task Project_discriminator_columns(bool async)
+        {
+            await AssertQuery(
+                async,
+                ss => ss.Set<Gear>().Select(g => new { g.Nickname, Discriminator = EF.Property<string>(g, "Discriminator") }),
+                elementSorter: e => e.Nickname);
+
+            await AssertQuery(
+                async,
+                ss => ss.Set<Gear>().OfType<Officer>().Select(g => new { g.Nickname, Discriminator = EF.Property<string>(g, "Discriminator") }),
+                elementSorter: e => e.Nickname);
+
+            await AssertQuery(
+                async,
+                ss => ss.Set<Faction>().Select(f => new { f.Id, Discriminator = EF.Property<string>(f, "Discriminator") }),
+                elementSorter: e => e.Id);
+
+            await AssertQuery(
+                async,
+                ss => ss.Set<Faction>().OfType<LocustHorde>().Select(lh => new { lh.Id, Discriminator = EF.Property<string>(lh, "Discriminator") }),
+                elementSorter: e => e.Id);
+
+            await AssertQuery(
+                async,
+                ss => ss.Set<LocustLeader>().Select(ll => new { ll.Name, Discriminator = EF.Property<string>(ll, "Discriminator") }),
+                elementSorter: e => e.Name);
+
+            await AssertQuery(
+                async,
+                ss => ss.Set<LocustLeader>().OfType<LocustCommander>().Select(ll => new { ll.Name, Discriminator = EF.Property<string>(ll, "Discriminator") }),
+                elementSorter: e => e.Name);
         }
 
         protected virtual bool CanExecuteQueryString

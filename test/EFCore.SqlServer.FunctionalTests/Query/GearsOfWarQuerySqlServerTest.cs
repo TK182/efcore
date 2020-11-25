@@ -7344,6 +7344,41 @@ WHERE [t0].[IssueDate] > COALESCE((
     ORDER BY [t1].[Id]), '0001-01-01T00:00:00.0000000')");
         }
 
+        public override async Task Project_shadow_properties(bool async)
+        {
+            await base.Project_shadow_properties(async);
+
+            AssertSql(
+                @"SELECT [g].[Nickname], [g].[AssignedCityName]
+FROM [Gears] AS [g]");
+        }
+
+        public override async Task Project_discriminator_columns(bool async)
+        {
+            await base.Project_discriminator_columns(async);
+
+            AssertSql(
+                @"SELECT [g].[Nickname], [g].[Discriminator]
+FROM [Gears] AS [g]",
+                //
+                @"SELECT [g].[Nickname], [g].[Discriminator]
+FROM [Gears] AS [g]
+WHERE [g].[Discriminator] = N'Officer'",
+                //
+                @"SELECT [f].[Id], [f].[Discriminator]
+FROM [Factions] AS [f]",
+                //
+                @"SELECT [f].[Id], [f].[Discriminator]
+FROM [Factions] AS [f]",
+                //
+                @"SELECT [l].[Name], [l].[Discriminator]
+FROM [LocustLeaders] AS [l]",
+                //
+                @"SELECT [l].[Name], [l].[Discriminator]
+FROM [LocustLeaders] AS [l]
+WHERE [l].[Discriminator] = N'LocustCommander'");
+        }
+
         private void AssertSql(params string[] expected)
             => Fixture.TestSqlLoggerFactory.AssertBaseline(expected);
     }

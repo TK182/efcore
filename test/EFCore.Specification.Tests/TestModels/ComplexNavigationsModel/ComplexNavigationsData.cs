@@ -26,6 +26,8 @@ namespace Microsoft.EntityFrameworkCore.TestModels.ComplexNavigationsModel
         public IReadOnlyList<InheritanceLeaf1> InheritanceLeafOnes { get; }
         public IReadOnlyList<InheritanceLeaf2> InheritanceLeafTwos { get; }
 
+        public IReadOnlyDictionary<(Type, string), Func<object, object>> ShadowPropertyMappings { get; }
+
         public abstract IQueryable<TEntity> Set<TEntity>()
             where TEntity : class;
 
@@ -60,6 +62,16 @@ namespace Microsoft.EntityFrameworkCore.TestModels.ComplexNavigationsModel
 
             WireUpInheritancePart1(InheritanceBaseOnes, InheritanceBaseTwos, InheritanceLeafOnes, InheritanceLeafTwos);
             WireUpInheritancePart2(InheritanceBaseTwos, InheritanceLeafTwos);
+
+            ShadowPropertyMappings = CreateShadowPropertyMappings(
+                LevelOnes,
+                LevelTwos,
+                LevelThrees,
+                LevelFours,
+                InheritanceBaseOnes,
+                InheritanceBaseTwos,
+                InheritanceLeafOnes,
+                InheritanceLeafTwos);
         }
 
         public static IReadOnlyList<Level1> CreateLevelOnes(bool tableSplitting)
@@ -346,7 +358,7 @@ namespace Microsoft.EntityFrameworkCore.TestModels.ComplexNavigationsModel
             return result;
         }
 
-        public static void WireUpInheritancePart1(
+        private static void WireUpInheritancePart1(
             IReadOnlyList<InheritanceBase1> ib1s,
             IReadOnlyList<InheritanceBase2> ib2s,
             IReadOnlyList<InheritanceLeaf1> il1s,
@@ -372,14 +384,14 @@ namespace Microsoft.EntityFrameworkCore.TestModels.ComplexNavigationsModel
             ((InheritanceDerived2)ib1s[2]).CollectionDifferentType = new List<InheritanceLeaf2> { il2s[0] };
         }
 
-        public static void WireUpInheritancePart2(
+        private static void WireUpInheritancePart2(
             IReadOnlyList<InheritanceBase2> ib2s,
             IReadOnlyList<InheritanceLeaf2> il2s)
         {
             il2s[0].BaseCollection = new List<InheritanceBase2> { ib2s[0] };
         }
 
-        public static void WireUpPart1(
+        private static void WireUpPart1(
             IReadOnlyList<Level1> l1s,
             IReadOnlyList<Level2> l2s,
             IReadOnlyList<Level3> l3s,
@@ -622,7 +634,7 @@ namespace Microsoft.EntityFrameworkCore.TestModels.ComplexNavigationsModel
             l4s[9].OneToMany_Required_Self4 = new List<Level4>();
         }
 
-        public static void WireUpInversePart1(
+        private static void WireUpInversePart1(
             IReadOnlyList<Level1> l1s,
             IReadOnlyList<Level2> l2s,
             IReadOnlyList<Level3> l3s,
@@ -908,7 +920,7 @@ namespace Microsoft.EntityFrameworkCore.TestModels.ComplexNavigationsModel
             l4s[9].OneToMany_Required_Self_Inverse4 = l4s[8];
         }
 
-        public static void WireUpPart2(
+        private static void WireUpPart2(
             IReadOnlyList<Level1> l1s,
             IReadOnlyList<Level2> l2s,
             IReadOnlyList<Level3> l3s,
@@ -1020,7 +1032,7 @@ namespace Microsoft.EntityFrameworkCore.TestModels.ComplexNavigationsModel
             l4s[9].OneToMany_Optional_Self4 = new List<Level4> { l4s[8] };
         }
 
-        public static void WireUpInversePart2(
+        private static void WireUpInversePart2(
             IReadOnlyList<Level1> l1s,
             IReadOnlyList<Level2> l2s,
             IReadOnlyList<Level3> l3s,
@@ -1059,9 +1071,9 @@ namespace Microsoft.EntityFrameworkCore.TestModels.ComplexNavigationsModel
 
             l3s[0].OneToOne_Optional_PK_Inverse3 = l2s[0];
             l3s[2].OneToOne_Optional_PK_Inverse3 = l2s[2];
-            l3s[5].OneToOne_Optional_PK_Inverse3 = l2s[4];
-            l3s[7].OneToOne_Optional_PK_Inverse3 = l2s[6];
-            l3s[9].OneToOne_Optional_PK_Inverse3 = l2s[8];
+            l3s[4].OneToOne_Optional_PK_Inverse3 = l2s[5];
+            l3s[6].OneToOne_Optional_PK_Inverse3 = l2s[7];
+            l3s[8].OneToOne_Optional_PK_Inverse3 = l2s[9];
 
             l3s[8].OneToOne_Optional_FK_Inverse3 = l2s[1];
             l3s[6].OneToOne_Optional_FK_Inverse3 = l2s[3];
@@ -1189,5 +1201,186 @@ namespace Microsoft.EntityFrameworkCore.TestModels.ComplexNavigationsModel
             context.Fields.AddRange(field1, field2);
             context.SaveChanges();
         }
+
+        private Dictionary<(Type, string), Func<object, object>> CreateShadowPropertyMappings(
+            IReadOnlyList<Level1> l1s,
+            IReadOnlyList<Level2> l2s,
+            IReadOnlyList<Level3> l3s,
+            IReadOnlyList<Level4> l4s,
+            IReadOnlyList<InheritanceBase1> ib1s,
+            IReadOnlyList<InheritanceBase2> ib2s,
+            IReadOnlyList<InheritanceLeaf1> il1s,
+            IReadOnlyList<InheritanceLeaf2> il2s)
+            => new Dictionary<(Type, string), Func<object, object>>
+            {
+                {
+                    (typeof(Level1), "OneToOne_Optional_Self1Id"),
+                    e => l1s.SingleOrDefault(l => l.Id == ((Level1)e)?.Id)?.OneToOne_Optional_Self1?.Id
+                },
+                {
+                    (typeof(Level1), "OneToMany_Required_Self_Inverse1Id"),
+                    e => l1s.SingleOrDefault(l => l.Id == ((Level1)e)?.Id)?.OneToMany_Required_Self_Inverse1?.Id
+                },
+                {
+                    (typeof(Level1), "OneToMany_Optional_Self_Inverse1Id"),
+                    e => l1s.SingleOrDefault(l => l.Id == ((Level1)e)?.Id)?.OneToMany_Optional_Self_Inverse1?.Id
+                },
+
+                {
+                    (typeof(Level2), "OneToOne_Optional_PK_Inverse2Id"),
+                    e => l2s.SingleOrDefault(l => l.Id == ((Level2)e)?.Id)?.OneToOne_Optional_PK_Inverse2?.Id
+                },
+                {
+                    (typeof(Level2), "OneToMany_Required_Inverse2Id"),
+                    e => l2s.SingleOrDefault(l => l.Id == ((Level2)e)?.Id)?.OneToMany_Required_Inverse2?.Id
+                },
+                { 
+                    (typeof(Level2), "OneToMany_Optional_Inverse2Id"),
+                    e => l2s.SingleOrDefault(l => l.Id == ((Level2)e)?.Id)?.OneToMany_Optional_Inverse2?.Id
+                },
+                {
+                    (typeof(Level2), "OneToOne_Optional_Self2Id"),
+                    e => l2s.SingleOrDefault(l => l.Id == ((Level2)e)?.Id)?.OneToOne_Optional_Self2?.Id
+                },
+                {
+                    (typeof(Level2), "OneToMany_Required_Self_Inverse2Id"),
+                    e => l2s.SingleOrDefault(l => l.Id == ((Level2)e)?.Id)?.OneToMany_Required_Self_Inverse2?.Id
+                },
+                {
+                    (typeof(Level2), "OneToMany_Optional_Self_Inverse2Id"),
+                    e => l2s.SingleOrDefault(l => l.Id == ((Level2)e)?.Id)?.OneToMany_Optional_Self_Inverse2?.Id
+                },
+
+                {
+                    (typeof(Level3), "OneToOne_Optional_PK_Inverse3Id"),
+                    e => l3s.SingleOrDefault(l => l.Id == ((Level3)e)?.Id)?.OneToOne_Optional_PK_Inverse3?.Id
+                },
+                {
+                    (typeof(Level3), "OneToMany_Required_Inverse3Id"),
+                    e => l3s.SingleOrDefault(l => l.Id == ((Level3)e)?.Id)?.OneToMany_Required_Inverse3?.Id
+                },
+                {
+                    (typeof(Level3), "OneToMany_Optional_Inverse3Id"),
+                    e => l3s.SingleOrDefault(l => l.Id == ((Level3)e)?.Id)?.OneToMany_Optional_Inverse3?.Id
+                },
+                {
+                    (typeof(Level3), "OneToOne_Optional_Self3Id"),
+                    e => l3s.SingleOrDefault(l => l.Id == ((Level3)e)?.Id)?.OneToOne_Optional_Self3?.Id
+                },
+                {
+                    (typeof(Level3), "OneToMany_Required_Self_Inverse3Id"),
+                    e => l3s.SingleOrDefault(l => l.Id == ((Level3)e)?.Id)?.OneToMany_Required_Self_Inverse3?.Id
+                },
+                {
+                    (typeof(Level3), "OneToMany_Optional_Self_Inverse3Id"),
+                    e => l3s.SingleOrDefault(l => l.Id == ((Level3)e)?.Id)?.OneToMany_Optional_Self_Inverse3?.Id
+                },
+
+                {
+                    (typeof(Level4), "OneToOne_Optional_PK_Inverse4Id"),
+                    e => l4s.SingleOrDefault(l => l.Id == ((Level4)e)?.Id)?.OneToOne_Optional_PK_Inverse4?.Id
+                },
+                {
+                    (typeof(Level4), "OneToMany_Required_Inverse4Id"),
+                    e => l4s.SingleOrDefault(l => l.Id == ((Level4)e)?.Id)?.OneToMany_Required_Inverse4?.Id
+                },
+                {
+                    (typeof(Level4), "OneToMany_Optional_Inverse4Id"),
+                    e => l4s.SingleOrDefault(l => l.Id == ((Level4)e)?.Id)?.OneToMany_Optional_Inverse4?.Id
+                },
+                {
+                    (typeof(Level4), "OneToOne_Optional_Self4Id"),
+                    e => l4s.SingleOrDefault(l => l.Id == ((Level4)e)?.Id)?.OneToOne_Optional_Self4?.Id
+                },
+                {
+                    (typeof(Level4), "OneToMany_Required_Self_Inverse4Id"),
+                    e => l4s.SingleOrDefault(l => l.Id == ((Level4)e)?.Id)?.OneToMany_Required_Self_Inverse4?.Id
+                },
+                {
+                    (typeof(Level4), "OneToMany_Optional_Self_Inverse4Id"),
+                    e => l4s.SingleOrDefault(l => l.Id == ((Level4)e)?.Id)?.OneToMany_Optional_Self_Inverse4?.Id
+                },
+
+                {
+                    (typeof(InheritanceBase1), "InheritanceBase2Id"),
+                    e => ((InheritanceBase1)e)?.Id == 1 ? 1 : null
+                },
+                {
+                    (typeof(InheritanceBase1), "InheritanceBase2Id1"),
+                    e => ((InheritanceBase1)e)?.Id == 1 ? null : 1
+                },
+
+                {
+                    (typeof(InheritanceBase2), "InheritanceLeaf2Id"),
+                    e => ((InheritanceBase2)e)?.Id == 1 ? 1 : null
+                },
+
+                {
+                    (typeof(InheritanceLeaf1), "DifferentTypeReference_InheritanceDerived1Id"),
+                    e =>
+                    {
+                        switch (((InheritanceLeaf1)e)?.Id)
+                        {
+                            case 1: return 1;
+                            case 2: return 2;
+                            default: return null;
+                        }
+                    }
+                },
+                {
+                    (typeof(InheritanceLeaf1), "InheritanceDerived1Id"),
+                    e =>
+                    {
+                        switch (((InheritanceLeaf1)e)?.Id)
+                        {
+                            case 1: return 1;
+                            case 2: return 2;
+                            case 3: return 2;
+                            default: return null;
+                        }
+                    }
+                },
+                {
+                    (typeof(InheritanceLeaf1), "InheritanceDerived1Id1"),
+                    e => ((InheritanceLeaf1)e)?.Id == 1 ? 1 : null
+                },
+                {
+                    (typeof(InheritanceLeaf1), "InheritanceDerived2Id"),
+                    e =>
+                    {
+                        switch (((InheritanceLeaf1)e)?.Id)
+                        {
+                            case 2: return 3;
+                            case 3: return 3;
+                            default: return null;
+                        }
+                    }
+                },
+                {
+                    (typeof(InheritanceLeaf1), "SameTypeReference_InheritanceDerived1Id"),
+                    e =>
+                    {
+                        switch (((InheritanceLeaf1)e)?.Id)
+                        {
+                            case 1: return 1;
+                            case 2: return 2;
+                            default: return null;
+                        }
+                    }
+                },
+                {
+                    (typeof(InheritanceLeaf1), "SameTypeReference_InheritanceDerived2Id"),
+                    e => ((InheritanceLeaf1)e)?.Id == 3 ? 3 : null
+                },
+
+                {
+                    (typeof(InheritanceLeaf2), "DifferentTypeReference_InheritanceDerived2Id"),
+                    e => ((InheritanceLeaf2)e)?.Id == 1 ? 3 : null
+                },
+                {
+                    (typeof(InheritanceLeaf2), "InheritanceDerived2Id"),
+                    e => ((InheritanceLeaf2)e)?.Id == 1 ? 3 : null
+                },
+            };
     }
 }
